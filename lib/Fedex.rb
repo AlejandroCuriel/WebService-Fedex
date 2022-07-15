@@ -6,22 +6,22 @@ module Fedex
   class Rates
     def self.rates_info
       #Test
-      #BORRAR: ORIGINALMENTE LLEGAN POR PARAMETRO
+      #Delete: originally they will arrive by parameters
       quote_params = {
         address_from: {
-          zip: "64000",
+          zip: "28040",
           country: "MX"
         },
         address_to: {
-          zip: "64000",
+          zip: "28040",
           country: "MX"
         },
         parcel: {
-          length: 25.0,
-          width: 28.0,
-          height: 46.0,
+          length: 30.0,
+          width: 30.0,
+          height: 60.0,
           distance_unit: "cm",
-          weight: 6.5,
+          weight: 12.5,
           mass_unit: "kg"
         }
       }
@@ -42,10 +42,33 @@ module Fedex
 
       options = create_xml(credentials, quote_params)
       parsed_info = Nokogiri::XML(options)
-      puts(parsed_info)
       response = HTTParty.post("https://wsbeta.fedex.com:443/xml", body: options)
       puts response.code
-      puts response.body
+
+      #here you can optimize
+      price = response["RateReply"]["RateReplyDetails"][0]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Amount"]
+      price2 = response["RateReply"]["RateReplyDetails"][1]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Amount"]
+      price3 = response["RateReply"]["RateReplyDetails"][2]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Amount"]
+
+      currency = response["RateReply"]["RateReplyDetails"][0]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Currency"]
+      currency2 = response["RateReply"]["RateReplyDetails"][1]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Currency"]
+      currency3 = response["RateReply"]["RateReplyDetails"][2]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Currency"]
+
+      name = response["RateReply"]["RateReplyDetails"][0]["ServiceType"].gsub("_"," ").split.map(&:capitalize)
+      .join(' ')
+      name2 = response["RateReply"]["RateReplyDetails"][1]["ServiceType"].gsub("_"," ").split.map(&:capitalize)
+      .join(' ')
+      name3 = response["RateReply"]["RateReplyDetails"][2]["ServiceType"].gsub("_"," ").split.map(&:capitalize)
+      .join(' ')
+
+      token = response["RateReply"]["RateReplyDetails"][0]["ServiceType"]
+      token2 = response["RateReply"]["RateReplyDetails"][1]["ServiceType"]
+      token3 = response["RateReply"]["RateReplyDetails"][2]["ServiceType"]
+
+
+      puts test = [{"price" => "#{price}", "currency" => "#{currency}","service_level" => { "name" => "#{name}", "toke" => "#{token}"} },{"price" => "#{price2}", "currency" => "#{currency2}","service_level" => { "name" => "#{name2
+        }", "token" => "#{token2}"} },{"price" => "#{price3}", "currency" => "#{currency3}","service_level" => { "name" => "#{name3}", "token" => "#{token3}"} },]
+      # puts response.body
     end
 
     def self.create_xml(credentials, quote_params)

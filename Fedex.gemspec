@@ -4,7 +4,7 @@ require_relative "lib/Fedex/version"
 
 Gem::Specification.new do |spec|
   spec.name = "Fedex"
-  spec.version = Fedex::VERSION
+  spec.version = '0.1.1'
   spec.authors = ["Alejandro Curiel"]
   spec.email = ["alex_curielg@hotmail.com"]
 
