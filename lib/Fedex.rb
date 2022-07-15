@@ -4,71 +4,31 @@ require 'nokogiri'
 
 module Fedex
   class Rates
-    def self.rates_info
-      #Test
-      #Delete: originally they will arrive by parameters
-      quote_params = {
-        address_from: {
-          zip: "28040",
-          country: "MX"
-        },
-        address_to: {
-          zip: "28040",
-          country: "MX"
-        },
-        parcel: {
-          length: 30.0,
-          width: 30.0,
-          height: 60.0,
-          distance_unit: "cm",
-          weight: 12.5,
-          mass_unit: "kg"
-        }
-      }
-      credentials = {
-        UserCredential: {
-          Key: "bkjIgUhxdghtLw9L",
-          Password: "6p8oOccHmDwuJZCyJs44wQ0Iw"
-        },
-        ClientDetail: {
-          AccountNumber: "510087720",
-          MeterNumber: "119238439",
-          Localization: {
-            LanguageCode: "es",
-            LocaleCode: "mx"
-          }
-        }
-      }
-
+    def self.rates_info(credentials, quote_params)
       options = create_xml(credentials, quote_params)
-      parsed_info = Nokogiri::XML(options)
       response = HTTParty.post("https://wsbeta.fedex.com:443/xml", body: options)
-      puts response.code
 
-      #here you can optimize
-      price = response["RateReply"]["RateReplyDetails"][0]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Amount"]
-      price2 = response["RateReply"]["RateReplyDetails"][1]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Amount"]
-      price3 = response["RateReply"]["RateReplyDetails"][2]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Amount"]
+      rates = []
+      rates_replies = response.dig("RateReply", "RateReplyDetails").first(3)
 
-      currency = response["RateReply"]["RateReplyDetails"][0]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Currency"]
-      currency2 = response["RateReply"]["RateReplyDetails"][1]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Currency"]
-      currency3 = response["RateReply"]["RateReplyDetails"][2]["RatedShipmentDetails"][0]["ShipmentRateDetail"]["TotalNetChargeWithDutiesAndTaxes"]["Currency"]
+      rates_replies.each do |rate_reply|
+        shipment_detail = rate_reply.dig("RatedShipmentDetails").first.dig("ShipmentRateDetail", "TotalNetChargeWithDutiesAndTaxes")
+        rate_reply_type = rate_reply.dig("ServiceType")
 
-      name = response["RateReply"]["RateReplyDetails"][0]["ServiceType"].gsub("_"," ").split.map(&:capitalize)
-      .join(' ')
-      name2 = response["RateReply"]["RateReplyDetails"][1]["ServiceType"].gsub("_"," ").split.map(&:capitalize)
-      .join(' ')
-      name3 = response["RateReply"]["RateReplyDetails"][2]["ServiceType"].gsub("_"," ").split.map(&:capitalize)
-      .join(' ')
+        rates << create_rate_response(shipment_detail, rate_reply_type)
+      end
 
-      token = response["RateReply"]["RateReplyDetails"][0]["ServiceType"]
-      token2 = response["RateReply"]["RateReplyDetails"][1]["ServiceType"]
-      token3 = response["RateReply"]["RateReplyDetails"][2]["ServiceType"]
+      rates
+    end
 
-
-      puts test = [{"price" => "#{price}", "currency" => "#{currency}","service_level" => { "name" => "#{name}", "toke" => "#{token}"} },{"price" => "#{price2}", "currency" => "#{currency2}","service_level" => { "name" => "#{name2
-        }", "token" => "#{token2}"} },{"price" => "#{price3}", "currency" => "#{currency3}","service_level" => { "name" => "#{name3}", "token" => "#{token3}"} },]
-      # puts response.body
+    def self.create_rate_response(shipment_detail, rate_reply_type)
+      { price: shipment_detail.dig("Amount"),
+        currency: shipment_detail.dig("Currency"),
+        service_level: {
+          name: rate_reply_type.gsub("_", " ").capitalize,
+          token: rate_reply_type
+        }
+      }
     end
 
     def self.create_xml(credentials, quote_params)
